@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Semester Registration{% endblock %}
+{% block content %}
+<div class="dash-layout">
+  <div class="sidebar">
+    <div class="sidebar-section">Student</div>
+    <a class="sidebar-item" href="{{ url_for('student_dashboard') }}"><span class="icon">◉</span> Overview</a>
+    <a class="sidebar-item active" href="{{ url_for('student_register') }}"><span class="icon">✎</span> Register</a>
+    <a class="sidebar-item" href="{{ url_for('student_status') }}"><span class="icon">◈</span> My Status</a>
+  </div>
+
+  <div class="main-content">
+    <div class="page-title">Semester Registration</div>
+    <div class="page-sub">Select your semester, choose subjects and upload your fee receipt</div>
+
+    {% if message %}
+      {% set cat, text = message %}
+      <div class="alert alert-{{ cat }}">{{ text }}</div>
+    {% endif %}
+
+    {% if not reg_open %}
+      <div class="alert alert-warn">⚠ Registration is currently <strong>closed</strong>. Please check back when your coordinator opens it.</div>
+    {% endif %}
+
+    {% if existing %}
+      <div class="alert alert-{% if existing.Status == 'approved' %}success{% elif existing.Status == 'rejected' %}danger{% else %}warn{% endif %}">
+        Registration already submitted for Semester {{ selected_sem }} — Status: <strong>{{ existing.Status.capitalize() }}</strong>.
+        View details in <a href="{{ url_for('student_status') }}" style="color:inherit;font-weight:500">My Status</a>.
+      </div>
+    {% elif student %}
+
+      <!-- Semester Selector Tabs -->
+      {% if all_semesters %}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1.2rem">
+        {% for sem in all_semesters %}
+          <a href="{{ url_for('student_register', sem=sem) }}"
+             class="btn-{% if sem == selected_sem %}primary{% else %}secondary{% endif %}"
+             style="padding:6px 14px;font-size:13px;text-decoration:none">
+            Sem {{ sem }}{% if sem == student.CurrentSem %} ★{% endif %}
+          </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="alert alert-info">
+        Registering for <strong>Semester {{ selected_sem }}</strong> — Academic Year {{ acad_year }}
+        {% if selected_sem == student.CurrentSem %}(your current semester){% endif %}
+      </div>
+
+      <div class="card">
+        <div class="card-title">Registration Form</div>
+        <form method="POST" action="{{ url_for('student_register') }}" enctype="multipart/form-data">
+          <input type="hidden" name="semester" value="{{ selected_sem }}" />
+
+          <div class="form-row" style="margin-bottom:12px">
+            <div class="form-group">
+              <label class="form-label">Course</label>
+              <input class="form-input" value="{{ student.CourseName }}" readonly />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Semester</label>
+              <input class="form-input" value="Semester {{ selected_sem }}" readonly />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Academic Year</label>
+            <input class="form-input" value="{{ acad_year }}" readonly />
+          </div>
+
+          {% if subjects %}
+          <div class="form-group">
+            <label class="form-label">Select Subjects <span style="color:#999;font-weight:400">(minimum 2)</span></label>
+            <div class="subject-grid">
+              {% for sub in subjects %}
+              <label class="subject-check {% if not sub.IsElective %}selected{% endif %}" id="lbl-{{ sub.SubjectID }}">
+                <input type="checkbox" name="subjects" value="{{ sub.SubjectID }}"
+                       {% if not sub.IsElective %}checked{% endif %}
+                       onchange="toggleSubject(this, '{{ sub.SubjectID }}')">
+                {{ sub.SubjectName }}
+                {% if sub.IsElective %}<span style="font-size:10px;color:#999;margin-left:4px">(Elective)</span>{% endif %}
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+          {% else %}
+          <div class="alert alert-warn">No subjects found for Semester {{ selected_sem }}. Contact your coordinator.</div>
+          {% endif %}
+
+          <!-- Fee Receipt Upload -->
+          <div class="form-group" style="margin-top:1rem">
+            <label class="form-label">Fee Receipt
+              <span style="color:#999;font-weight:400;font-size:12px"> — PDF, JPG or PNG (max 5 MB)</span>
+            </label>
+            <input class="form-input" type="file" name="fee_receipt" accept=".pdf,.jpg,.jpeg,.png"
+                   style="padding:6px" />
+            <div style="font-size:11px;color:var(--color-text-secondary);margin-top:4px">
+              Upload a scanned copy or photo of your fee payment receipt.
+            </div>
+          </div>
+
+          <div style="margin-top:1.2rem;display:flex;gap:8px">
+            <a class="btn-secondary" href="{{ url_for('student_dashboard') }}">Cancel</a>
+            <button class="btn-primary" type="submit" {% if not reg_open %}disabled{% endif %}>Submit Registration</button>
+          </div>
+        </form>
+      </div>
+    {% else %}
+    <div class="alert alert-warn">Student profile not found. Please contact administrator.</div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+function toggleSubject(el, id) {
+  const lbl = document.getElementById('lbl-' + id);
+  lbl.classList.toggle('selected', el.checked);
+}
+</script>
+{% endblock %}

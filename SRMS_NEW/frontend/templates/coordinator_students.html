@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Students{% endblock %}
+{% block content %}
+<div class="dash-layout">
+  <div class="sidebar">
+    <div class="sidebar-section">Coordinator</div>
+    <a class="sidebar-item" href="{{ url_for('coordinator_dashboard') }}"><span class="icon">◉</span> Overview</a>
+    <a class="sidebar-item active" href="{{ url_for('coordinator_students') }}"><span class="icon">👤</span> Students</a>
+    <a class="sidebar-item" href="{{ url_for('coordinator_verify') }}"><span class="icon">✔</span> Verify</a>
+  </div>
+
+  <div class="main-content">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem">
+      <div>
+        <div class="page-title">Students</div>
+        <div class="page-sub" style="margin-bottom:0">Students in your assigned courses &amp; semesters</div>
+      </div>
+      <!-- Export -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <div style="font-size:12px;color:var(--color-text-secondary);margin-right:4px">Export:</div>
+        <a class="btn-small" style="background:#e8f5e9;color:#2e7d32;border:1px solid #c8e6c9;text-decoration:none"
+           href="{{ url_for('coordinator_export', type='registered', fmt='csv', course=course_filter, sem=sem_filter) }}">↓ Registered CSV</a>
+        <a class="btn-small" style="background:#e8f5e9;color:#2e7d32;border:1px solid #c8e6c9;text-decoration:none"
+           href="{{ url_for('coordinator_export', type='registered', fmt='excel', course=course_filter, sem=sem_filter) }}">↓ Registered Excel</a>
+        <a class="btn-small" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80;text-decoration:none"
+           href="{{ url_for('coordinator_export', type='unregistered', fmt='csv', course=course_filter, sem=sem_filter) }}">↓ Unregistered CSV</a>
+        <a class="btn-small" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80;text-decoration:none"
+           href="{{ url_for('coordinator_export', type='unregistered', fmt='excel', course=course_filter, sem=sem_filter) }}">↓ Unregistered Excel</a>
+      </div>
+    </div>
+
+    <!-- Filters — courses & semesters pulled from DB assignment -->
+    <form method="GET" style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
+      <input class="search-input" name="q" placeholder="Search name / roll…" value="{{ search }}" style="flex:1;min-width:160px" />
+
+      <select class="form-select" name="course" style="width:auto">
+        <option value="">All My Courses</option>
+        {% for c in assigned_courses %}
+          <option value="{{ c.ShortCode }}" {% if course_filter == c.ShortCode %}selected{% endif %}>
+            {{ c.ShortCode }} — {{ c.CourseName }}
+          </option>
+        {% endfor %}
+      </select>
+
+      <select class="form-select" name="sem" style="width:auto">
+        <option value="">All My Sems</option>
+        {% for s in assigned_sems %}
+          <option value="{{ s }}" {% if sem_filter|string == s|string %}selected{% endif %}>Sem {{ s }}</option>
+        {% endfor %}
+      </select>
+
+      <button class="btn-primary" type="submit" style="width:auto;padding:8px 16px">Filter</button>
+      <a class="btn-secondary" href="{{ url_for('coordinator_students') }}" style="padding:8px 16px;text-decoration:none">Clear</a>
+    </form>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th><th>Roll No</th><th>Course</th><th>Sem</th>
+              <th>Status</th><th>Subjects</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in students %}
+            <tr>
+              <td style="font-weight:500">{{ s.FullName }}</td>
+              <td style="font-size:12px">{{ s.RollNo }}</td>
+              <td><span class="badge badge-{{ s.ShortCode | lower }}">{{ s.ShortCode }}</span></td>
+              <td style="text-align:center">{{ s.CurrentSem }}</td>
+              <td>
+                {% if s.Status %}
+                  <span class="badge badge-{{ s.Status }}">{{ s.Status.capitalize() }}</span>
+                {% else %}
+                  <span class="badge" style="background:#f5f5f5;color:#999">Not Registered</span>
+                {% endif %}
+              </td>
+              <td style="font-size:11px;color:var(--color-text-secondary)">{{ s.Subjects or '—' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--color-text-secondary)">No students found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

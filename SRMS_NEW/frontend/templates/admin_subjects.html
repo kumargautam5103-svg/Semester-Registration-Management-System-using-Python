@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Subject Management{% endblock %}
+{% block content %}
+<div class="dash-layout">
+  <div class="sidebar">
+    <div class="sidebar-section">Admin</div>
+    <a class="sidebar-item" href="{{ url_for('admin_dashboard') }}"><span class="icon">◉</span> Overview</a>
+    <a class="sidebar-item" href="{{ url_for('admin_users') }}"><span class="icon">👥</span> Users</a>
+    <a class="sidebar-item" href="{{ url_for('admin_courses') }}"><span class="icon">📚</span> Courses</a>
+    <a class="sidebar-item active" href="{{ url_for('admin_subjects') }}"><span class="icon">📋</span> Subjects</a>
+  </div>
+
+  <div class="main-content">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem">
+      <div><div class="page-title">Subject Management</div><div class="page-sub" style="margin-bottom:0">Subjects offered per course and semester</div></div>
+      <button class="btn-primary" onclick="document.getElementById('modal-addsubject').classList.add('open')">+ Add Subject</button>
+    </div>
+
+    <form method="GET" class="search-row" style="margin-bottom:1rem">
+      <select class="filter-select" name="course" onchange="this.form.submit()">
+        <option value="">All courses</option>
+        {% for c in courses %}
+        <option value="{{ c.ShortCode }}" {% if course_filter == c.ShortCode %}selected{% endif %}>{{ c.ShortCode }}</option>
+        {% endfor %}
+      </select>
+    </form>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Code</th><th>Subject Name</th><th>Course</th><th>Semester</th><th>Type</th><th style="width:80px">Actions</th></tr></thead>
+          <tbody>
+            {% for sub in subjects %}
+            <tr>
+              <td style="font-size:12px;color:var(--color-text-secondary)">{{ sub.SubjectCode }}</td>
+              <td style="font-weight:500">{{ sub.SubjectName }}</td>
+              <td><span class="badge badge-{{ sub.ShortCode | lower }}">{{ sub.ShortCode }}</span></td>
+              <td>Sem {{ sub.Semester }}</td>
+              <td>
+                {% if sub.IsElective %}
+                  <span class="badge" style="background:#EEEDFE;color:#534AB7">Elective</span>
+                {% else %}
+                  <span class="badge" style="background:#f0f0f0;color:#555">Core</span>
+                {% endif %}
+              </td>
+              <td>
+                <form method="POST" action="{{ url_for('admin_delete_subject', subject_id=sub.SubjectID) }}"
+                      onsubmit="return confirmSubjectDelete('{{ sub.SubjectName | e }}', {{ 'true' if sub.IsElective else 'false' }})"
+                      style="display:inline">
+                  <button class="btn-small btn-reject" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--color-text-secondary)">No subjects found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD SUBJECT MODAL -->
+<div class="modal-backdrop" id="modal-addsubject">
+  <div class="modal">
+    <div class="modal-title">Add New Subject</div>
+    <form method="POST" action="{{ url_for('admin_add_subject') }}">
+      <div class="form-group"><label class="form-label">Subject Name</label><input class="form-input" name="subject_name" placeholder="Subject name" required /></div>
+      <div class="form-group"><label class="form-label">Subject Code</label><input class="form-input" name="subject_code" placeholder="e.g. BCA-S4-XX" required /></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Course</label>
+          <select class="form-select" name="course_id" required>
+            {% for c in courses %}
+            <option value="{{ c.CourseID }}">{{ c.ShortCode }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Semester</label>
+          <select class="form-select" name="semester" required>
+            {% for i in range(1,7) %}
+            <option value="{{ i }}">Sem {{ i }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="subject-check" style="width:auto;display:inline-flex">
+          <input type="checkbox" name="is_elective" value="1"> &nbsp;Elective subject
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-addsubject').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn-primary" style="width:auto;padding:8px 20px">Add Subject</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+document.getElementById('modal-addsubject').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+});
+
+function confirmSubjectDelete(name, isElective) {
+  if (isElective) {
+    return confirm(
+      'Delete elective subject "' + name + '"?\n\n' +
+      'This subject will be removed from ALL student registrations that include it.\n\n' +
+      'This cannot be undone.'
+    );
+  } else {
+    return confirm(
+      'Delete core subject "' + name + '"?\n\n' +
+      'Note: If this subject is part of any active registration, deletion will be blocked.\n\n' +
+      'Continue?'
+    );
+  }
+}
+</script>
+{% endblock %}

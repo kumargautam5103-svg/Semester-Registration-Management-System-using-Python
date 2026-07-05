@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Student Dashboard{% endblock %}
+{% block content %}
+<div class="dash-layout">
+  <div class="sidebar">
+    <div class="sidebar-section">Student</div>
+    <a class="sidebar-item {% if request.endpoint == 'student_dashboard' %}active{% endif %}"
+       href="{{ url_for('student_dashboard') }}"><span class="icon">◉</span> Overview</a>
+    <a class="sidebar-item {% if request.endpoint == 'student_register' %}active{% endif %}"
+       href="{{ url_for('student_register') }}"><span class="icon">✎</span> Register</a>
+    <a class="sidebar-item {% if request.endpoint == 'student_status' %}active{% endif %}"
+       href="{{ url_for('student_status') }}"><span class="icon">◈</span> My Status</a>
+  </div>
+
+  <div class="main-content">
+    <div class="page-title">Student Dashboard</div>
+    <div class="page-sub">Welcome, {{ session.full_name }}</div>
+
+    {% if student %}
+    <div class="card">
+      <div class="card-title">My Profile</div>
+      <div class="profile-row">
+        <div class="profile-avatar">{{ session.full_name[:2].upper() }}</div>
+        <div>
+          <div class="profile-name">{{ session.full_name }}</div>
+          <div class="profile-course">
+            <span class="badge badge-{{ student.ShortCode | lower }}">{{ student.ShortCode }}</span>
+            &nbsp;Semester {{ student.CurrentSem }}
+          </div>
+        </div>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-item"><label>Roll No</label><span>{{ student.RollNo }}</span></div>
+        <div class="detail-item"><label>Email</label><span>{{ session.email or '—' }}</span></div>
+        <div class="detail-item"><label>Course</label><span>{{ student.CourseName }}</span></div>
+        <div class="detail-item"><label>Batch</label><span>{{ student.Batch or '—' }}</span></div>
+      </div>
+    </div>
+
+    <div class="metric-grid">
+      <div class="metric">
+        <div class="metric-label">Current Semester</div>
+        <div class="metric-val">{{ student.CurrentSem }}</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Subjects Selected</div>
+        <div class="metric-val">{{ reg_subjects | length if reg_subjects else '0' }}</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Registration Status</div>
+        <div class="metric-val" style="font-size:14px;margin-top:4px">
+          {% if reg %}
+            <span class="badge badge-{{ reg.Status }}">{{ reg.Status.capitalize() }}</span>
+          {% else %}
+            <span class="badge" style="background:#f5f5f5;color:#666">Not Submitted</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% if reg and reg_subjects %}
+    <div class="card">
+      <div class="card-title">Registered Subjects — Semester {{ student.CurrentSem }}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
+        {% for sub in reg_subjects %}
+          <span class="badge" style="background:#f0f0f0;color:#333;font-size:12px;padding:4px 10px">{{ sub }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if not reg %}
+    <div class="alert alert-info">
+      You have not submitted your semester registration yet.
+      <a href="{{ url_for('student_register') }}" style="color:#185FA5;font-weight:500;margin-left:8px">Register now →</a>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="alert alert-warn">Student profile not found. Please contact the administrator.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

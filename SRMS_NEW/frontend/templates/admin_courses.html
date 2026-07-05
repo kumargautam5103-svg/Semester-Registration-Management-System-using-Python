@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Course Management{% endblock %}
+{% block content %}
+<div class="dash-layout">
+  <div class="sidebar">
+    <div class="sidebar-section">Admin</div>
+    <a class="sidebar-item" href="{{ url_for('admin_dashboard') }}"><span class="icon">◉</span> Overview</a>
+    <a class="sidebar-item" href="{{ url_for('admin_users') }}"><span class="icon">👥</span> Users</a>
+    <a class="sidebar-item active" href="{{ url_for('admin_courses') }}"><span class="icon">📚</span> Courses</a>
+    <a class="sidebar-item" href="{{ url_for('admin_subjects') }}"><span class="icon">📋</span> Subjects</a>
+  </div>
+
+  <div class="main-content">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem">
+      <div><div class="page-title">Course Management</div><div class="page-sub" style="margin-bottom:0">Manage programmes offered by the institution</div></div>
+      <button class="btn-primary" onclick="document.getElementById('modal-addcourse').classList.add('open')">+ Add Course</button>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Course Name</th><th>Code</th><th>Duration</th><th>Students</th><th style="width:80px">Actions</th></tr></thead>
+          <tbody>
+            {% for c in courses %}
+            <tr>
+              <td style="font-weight:500">{{ c.CourseName }}</td>
+              <td><span class="badge badge-{{ c.ShortCode | lower }}">{{ c.ShortCode }}</span></td>
+              <td style="font-size:12px;color:var(--color-text-secondary)">{{ c.Duration }}</td>
+              <td>{{ c.StudentCount }}</td>
+              <td>
+                <form method="POST" action="{{ url_for('admin_delete_course', course_id=c.CourseID) }}"
+                      onsubmit="return confirm('Delete this course? This will fail if students are enrolled.')" style="display:inline">
+                  <button class="btn-small btn-reject" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--color-text-secondary)">No courses found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD COURSE MODAL -->
+<div class="modal-backdrop" id="modal-addcourse">
+  <div class="modal">
+    <div class="modal-title">Add New Course</div>
+    <form method="POST" action="{{ url_for('admin_add_course') }}">
+      <div class="form-group"><label class="form-label">Course Name</label><input class="form-input" name="course_name" placeholder="e.g. Bachelor of Computer Applications" required /></div>
+      <div class="form-group"><label class="form-label">Short Code</label><input class="form-input" name="short_code" placeholder="e.g. BCA" required /></div>
+      <div class="form-group"><label class="form-label">Duration</label><input class="form-input" name="duration" placeholder="e.g. 3 years / 6 semesters" required /></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-addcourse').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn-primary" style="width:auto;padding:8px 20px">Add Course</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+document.getElementById('modal-addcourse').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+});
+</script>
+{% endblock %}

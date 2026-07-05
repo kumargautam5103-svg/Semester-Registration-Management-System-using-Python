@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+{% block title %}User Management{% endblock %}
+{% block content %}
+<div class="dash-layout">
+  <div class="sidebar">
+    <div class="sidebar-section">Admin</div>
+    <a class="sidebar-item" href="{{ url_for('admin_dashboard') }}"><span class="icon">◉</span> Overview</a>
+    <a class="sidebar-item active" href="{{ url_for('admin_users') }}"><span class="icon">👥</span> Users</a>
+    <a class="sidebar-item" href="{{ url_for('admin_courses') }}"><span class="icon">📚</span> Courses</a>
+    <a class="sidebar-item" href="{{ url_for('admin_subjects') }}"><span class="icon">📋</span> Subjects</a>
+  </div>
+
+  <div class="main-content">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem">
+      <div>
+        <div class="page-title">User Management</div>
+        <div class="page-sub" style="margin-bottom:0">Manage students, coordinators and their course assignments</div>
+      </div>
+      <button class="btn-primary" onclick="document.getElementById('modal-adduser').classList.add('open')">+ Add User</button>
+    </div>
+
+    <!-- ── COORDINATORS SECTION ── -->
+    <div class="card" style="margin-bottom:1.5rem;padding:0;overflow:hidden">
+      <div style="padding:1rem 1.2rem;border-bottom:1px solid var(--color-border)">
+        <div class="card-title" style="margin-bottom:0">🎓 Coordinators &amp; Course Assignments</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Username</th>
+              <th>Department</th>
+              <th>Assigned Courses &amp; Semesters</th>
+              <th>Status</th>
+              <th style="width:110px">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set coord_users = users | selectattr('Role', 'equalto', 'coordinator') | list %}
+            {% for u in coord_users %}
+            <tr>
+              <td>
+                <div style="font-weight:500">{{ u.FullName }}</div>
+                <div style="font-size:11px;color:var(--color-text-secondary)">{{ u.Email or '—' }}</div>
+              </td>
+              <td style="font-size:12px">{{ u.Username }}</td>
+              <td style="font-size:12px;color:var(--color-text-secondary)">{{ u.Department or '—' }}</td>
+              <td>
+                {% if u.CoordID and coord_assignments.get(u.CoordID) %}
+                  <div style="display:flex;flex-wrap:wrap;gap:4px">
+                    {% for a in coord_assignments[u.CoordID] %}
+                      <span class="badge badge-{{ a.ShortCode | lower }}"
+                            style="font-size:11px;padding:3px 8px;position:relative;padding-right:18px">
+                        {{ a.ShortCode }} S{{ a.Semester }}
+                        <!-- inline remove form -->
+                        <form method="POST" action="{{ url_for('admin_unassign_coordinator') }}"
+                              style="display:inline;position:absolute;right:3px;top:1px"
+                              onsubmit="return confirm('Remove this assignment?')">
+                          <input type="hidden" name="assign_id" value="{{ a.AssignID }}" />
+                          <button type="submit"
+                                  style="background:none;border:none;cursor:pointer;font-size:10px;color:inherit;padding:0;line-height:1">✕</button>
+                        </form>
+                      </span>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <span style="font-size:12px;color:#aaa;font-style:italic">No assignments</span>
+                {% endif %}
+                <!-- Add assignment button -->
+                {% if u.CoordID %}
+                <button class="btn-small" style="margin-top:5px;font-size:11px"
+                        onclick="openAssignModal({{ u.CoordID }}, '{{ u.FullName | e }}')">+ Assign</button>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge {% if u.IsActive %}badge-approved{% else %}badge-rejected{% endif %}">
+                  {{ 'Active' if u.IsActive else 'Inactive' }}
+                </span>
+              </td>
+              <td>
+                <div style="display:flex;flex-direction:column;gap:4px">
+                  <a href="{{ url_for('admin_edit_user', user_id=u.UserID) }}"
+                     class="btn-small"
+                     style="text-align:center;text-decoration:none;background:var(--color-background-info);color:var(--color-text-info)">✏️ Edit</a>
+                  {% if u.IsActive %}
+                  <form method="POST" action="{{ url_for('admin_delete_user', user_id=u.UserID) }}"
+                        onsubmit="return confirm('Deactivate this user?')" style="display:inline">
+                    <input type="hidden" name="action" value="deactivate" />
+                    <button class="btn-small btn-reject" type="submit" style="width:100%">Deactivate</button>
+                  </form>
+                  {% else %}
+                  <form method="POST" action="{{ url_for('admin_delete_user', user_id=u.UserID) }}"
+                        style="display:inline">
+                    <input type="hidden" name="action" value="activate" />
+                    <button class="btn-small" type="submit"
+                            style="width:100%;background:#28a745;color:#fff;border:none;border-radius:4px;padding:4px 8px;cursor:pointer">Activate</button>
+                  </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--color-text-secondary)">No coordinators found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── STUDENTS SECTION ── -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:1rem 1.2rem;border-bottom:1px solid var(--color-border)">
+        <div class="card-title" style="margin-bottom:0">🎒 Students</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Username</th><th>Roll No</th><th>Course</th><th>Sem</th><th>Status</th><th style="width:90px">Actions</th></tr>
+          </thead>
+          <tbody>
+            {% set student_users = users | selectattr('Role', 'equalto', 'student') | list %}
+            {% for u in student_users %}
+            <tr>
+              <td>
+                <div style="font-weight:500">{{ u.FullName }}</div>
+                <div style="font-size:11px;color:var(--color-text-secondary)">{{ u.Email or '—' }}</div>
+              </td>
+              <td style="font-size:12px">{{ u.Username }}</td>
+              <td style="font-size:12px;color:var(--color-text-secondary)">{{ u.RollNo or '—' }}</td>
+              <td>
+                {% if u.ShortCode %}
+                  <span class="badge badge-{{ u.ShortCode | lower }}">{{ u.ShortCode }}</span>
+                {% else %}—{% endif %}
+              </td>
+              <td style="text-align:center;font-size:12px">
+                {% if u.CurrentSem %}Sem {{ u.CurrentSem }}{% else %}—{% endif %}
+              </td>
+              <td>
+                <span class="badge {% if u.IsActive %}badge-approved{% else %}badge-rejected{% endif %}">
+                  {{ 'Active' if u.IsActive else 'Inactive' }}
+                </span>
+              </td>
+              <td>
+                <div style="display:flex;flex-direction:column;gap:4px">
+                  <a href="{{ url_for('admin_edit_user', user_id=u.UserID) }}"
+                     class="btn-small"
+                     style="text-align:center;text-decoration:none;background:var(--color-background-info);color:var(--color-text-info)">✏️ Edit</a>
+                  {% if u.IsActive %}
+                  <form method="POST" action="{{ url_for('admin_delete_user', user_id=u.UserID) }}"
+                        onsubmit="return confirm('Deactivate this user?')" style="display:inline">
+                    <input type="hidden" name="action" value="deactivate" />
+                    <button class="btn-small btn-reject" type="submit" style="width:100%">Deactivate</button>
+                  </form>
+                  {% else %}
+                  <form method="POST" action="{{ url_for('admin_delete_user', user_id=u.UserID) }}"
+                        style="display:inline">
+                    <input type="hidden" name="action" value="activate" />
+                    <button class="btn-small" type="submit"
+                            style="width:100%;background:#28a745;color:#fff;border:none;border-radius:4px;padding:4px 8px;cursor:pointer">Activate</button>
+                  </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--color-text-secondary)">No students found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     ADD USER MODAL
+═══════════════════════════════════════ -->
+<div class="modal-backdrop" id="modal-adduser">
+  <div class="modal">
+    <div class="modal-title">Add New User</div>
+    <form method="POST" action="{{ url_for('admin_add_user') }}">
+      <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" name="full_name" placeholder="Full name" required /></div>
+      <div class="form-group"><label class="form-label">Username</label><input class="form-input" name="username" placeholder="Username (used to login)" required /></div>
+      <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" name="email" placeholder="email@university.edu" /></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Role</label>
+          <select class="form-select" name="role" id="role-sel" onchange="toggleRoleFields(this.value)">
+            <option value="student">Student</option>
+            <option value="coordinator">Coordinator</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Password</label><input class="form-input" type="password" name="password" value="pass123" /></div>
+      </div>
+
+      <!-- Student fields -->
+      <div id="student-fields">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Course</label>
+            <select class="form-select" name="course_id" id="course-sel" onchange="updateSemDropdown(this)">
+              {% for c in courses %}
+              <option value="{{ c.CourseID }}" data-code="{{ c.ShortCode }}" data-dur="{{ c.Duration }}">{{ c.ShortCode }} — {{ c.CourseName }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Short Code (for Roll No)</label>
+            <input class="form-input" name="short_code" id="short-code-input"
+                   value="{{ courses[0].ShortCode if courses else 'BCA' }}" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Starting Semester</label>
+          <select class="form-select" name="init_sem" id="init-sem-sel">
+            <option value="1">Semester 1</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Coordinator fields -->
+      <div id="coord-fields" style="display:none">
+        <div class="form-group"><label class="form-label">Department</label><input class="form-input" name="department" placeholder="e.g. Computer Science" /></div>
+        <div class="alert alert-info" style="font-size:12px;margin-top:4px">
+          After creating the coordinator, use the <strong>Assign</strong> button in the table to assign courses &amp; semesters.
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-adduser').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn-primary" style="width:auto;padding:8px 20px">Create User</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     ASSIGN COORDINATOR MODAL
+═══════════════════════════════════════ -->
+<div class="modal-backdrop" id="modal-assign">
+  <div class="modal">
+    <div class="modal-title">Assign Course &amp; Semester</div>
+    <div style="font-size:13px;color:var(--color-text-secondary);margin-bottom:1rem">
+      Coordinator: <strong id="assign-coord-name"></strong>
+    </div>
+    <form method="POST" action="{{ url_for('admin_assign_coordinator') }}">
+      <input type="hidden" name="coord_id" id="assign-coord-id" />
+
+      <div class="form-group">
+        <label class="form-label">Course</label>
+        <select class="form-select" name="assign_course_id" id="assign-course-sel"
+                onchange="loadAssignSemesters(this.value)">
+          {% for c in courses %}
+          <option value="{{ c.CourseID }}">{{ c.ShortCode }} — {{ c.CourseName }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Semester</label>
+        <select class="form-select" name="assign_semester" id="assign-sem-sel">
+          <option value="">— select course first —</option>
+        </select>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-assign').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn-primary" style="width:auto;padding:8px 20px">Add Assignment</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// ── Course data for add-user modal ──
+const courseData = {
+  {% for c in courses %}
+  "{{ c.CourseID }}": { code: "{{ c.ShortCode }}", duration: "{{ c.Duration }}" },
+  {% endfor %}
+};
+
+function semCount(dur) {
+  for (let p of dur.replace('/', ',').split(',')) {
+    if (p.toLowerCase().includes('semester')) {
+      const n = parseInt(p.replace(/\D/g,''), 10);
+      if (!isNaN(n)) return n;
+    }
+  }
+  return 6;
+}
+
+function updateSemDropdown(sel) {
+  const info = courseData[sel.value];
+  if (!info) return;
+  document.getElementById('short-code-input').value = info.code;
+  const count = semCount(info.duration);
+  const semSel = document.getElementById('init-sem-sel');
+  semSel.innerHTML = '';
+  for (let i = 1; i <= count; i++) {
+    const opt = document.createElement('option');
+    opt.value = i; opt.textContent = 'Semester ' + i;
+    semSel.appendChild(opt);
+  }
+}
+
+function toggleRoleFields(role) {
+  document.getElementById('student-fields').style.display = role === 'student' ? 'block' : 'none';
+  document.getElementById('coord-fields').style.display   = role === 'coordinator' ? 'block' : 'none';
+}
+
+window.addEventListener('DOMContentLoaded', function () {
+  const csel = document.getElementById('course-sel');
+  if (csel) updateSemDropdown(csel);
+  // Load semesters for first course in assign modal
+  const acsel = document.getElementById('assign-course-sel');
+  if (acsel && acsel.value) loadAssignSemesters(acsel.value);
+});
+
+document.querySelectorAll('.modal-backdrop').forEach(el => {
+  el.addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+  });
+});
+
+// ── Assign modal ──
+function openAssignModal(coordId, coordName) {
+  document.getElementById('assign-coord-id').value = coordId;
+  document.getElementById('assign-coord-name').textContent = coordName;
+  const acsel = document.getElementById('assign-course-sel');
+  if (acsel && acsel.value) loadAssignSemesters(acsel.value);
+  document.getElementById('modal-assign').classList.add('open');
+}
+
+function loadAssignSemesters(courseId) {
+  if (!courseId) return;
+  fetch('/api/coordinator-semesters/' + courseId)
+    .then(r => r.json())
+    .then(sems => {
+      const sel = document.getElementById('assign-sem-sel');
+      sel.innerHTML = '';
+      if (sems.length === 0) {
+        sel.innerHTML = '<option value="">No semesters found</option>';
+        return;
+      }
+      sems.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s; opt.textContent = 'Semester ' + s;
+        sel.appendChild(opt);
+      });
+    })
+    .catch(() => {});
+}
+
+document.getElementById('assign-course-sel').addEventListener('change', function() {
+  loadAssignSemesters(this.value);
+});
+</script>
+{% endblock %}

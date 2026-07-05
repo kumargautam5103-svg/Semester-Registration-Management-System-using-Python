@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}My Status{% endblock %}
+{% block content %}
+<div class="dash-layout">
+  <div class="sidebar">
+    <div class="sidebar-section">Student</div>
+    <a class="sidebar-item" href="{{ url_for('student_dashboard') }}"><span class="icon">◉</span> Overview</a>
+    <a class="sidebar-item" href="{{ url_for('student_register') }}"><span class="icon">✎</span> Register</a>
+    <a class="sidebar-item active" href="{{ url_for('student_status') }}"><span class="icon">◈</span> My Status</a>
+  </div>
+
+  <div class="main-content">
+    <div class="page-title">My Registrations</div>
+    <div class="page-sub">History of your semester registration submissions</div>
+
+    {% if regs %}
+      {% for item in regs %}
+      {% set r = item.reg %}
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span>Semester {{ r.Semester }} — {{ r.AcadYear }}</span>
+          <span class="badge badge-{{ r.Status }}">{{ r.Status.capitalize() }}</span>
+        </div>
+        <div class="detail-grid" style="margin-bottom:12px">
+          <div class="detail-item"><label>Submitted</label><span>{{ r.SubmittedAt.strftime('%d %b %Y, %I:%M %p') if r.SubmittedAt else '—' }}</span></div>
+          <div class="detail-item"><label>Reviewed</label><span>{{ r.ReviewedAt.strftime('%d %b %Y') if r.ReviewedAt else 'Awaiting review' }}</span></div>
+          {% if r.Remarks %}
+          <div class="detail-item" style="grid-column:1/-1"><label>Remarks</label><span>{{ r.Remarks }}</span></div>
+          {% endif %}
+        </div>
+        {% if item.subjects %}
+        <div>
+          <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">REGISTERED SUBJECTS</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            {% for sub in item.subjects %}
+              <span class="badge" style="background:#f0f0f0;color:#333;font-size:12px;padding:4px 10px">{{ sub }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="alert alert-info">
+        No registrations found.
+        <a href="{{ url_for('student_register') }}" style="color:#185FA5;font-weight:500;margin-left:4px">Register for this semester →</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

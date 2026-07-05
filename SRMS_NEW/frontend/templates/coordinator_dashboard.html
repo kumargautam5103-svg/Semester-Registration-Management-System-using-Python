@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}Coordinator Dashboard{% endblock %}
+{% block content %}
+<div class="dash-layout">
+  <div class="sidebar">
+    <div class="sidebar-section">Coordinator</div>
+    <a class="sidebar-item {% if request.endpoint == 'coordinator_dashboard' %}active{% endif %}"
+       href="{{ url_for('coordinator_dashboard') }}"><span class="icon">◉</span> Overview</a>
+    <a class="sidebar-item {% if request.endpoint == 'coordinator_students' %}active{% endif %}"
+       href="{{ url_for('coordinator_students') }}"><span class="icon">👤</span> Students</a>
+    <a class="sidebar-item {% if request.endpoint == 'coordinator_verify' %}active{% endif %}"
+       href="{{ url_for('coordinator_verify') }}"><span class="icon">✔</span> Verify</a>
+  </div>
+
+  <div class="main-content">
+    <div class="page-title">Coordinator Dashboard</div>
+    <div class="page-sub">Welcome, {{ session.full_name }}</div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}" style="margin-bottom:1rem">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- ===== INITIATE REGISTRATION BANNER ===== -->
+    <div class="card" style="margin-bottom:1.2rem;padding:1.2rem 1.4rem;border-left:4px solid {% if reg_open %}#185FA5{% else %}#ccc{% endif %};">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--color-text-primary);margin-bottom:4px;">
+            📢 Initiate Semester Registration
+          </div>
+          {% if reg_open %}
+            <div style="font-size:13px;color:#444;">
+              Registration period <strong>{{ acad_year }}</strong> is currently open.
+              Click to notify all your students via email that registration has begun.
+            </div>
+          {% else %}
+            <div style="font-size:13px;color:#888;">
+              No active registration period. Ask the Admin to open one before initiating.
+            </div>
+          {% endif %}
+        </div>
+        <form method="POST" action="{{ url_for('coordinator_initiate_registration') }}"
+              onsubmit="return confirm('Send registration notification emails to all your students?')">
+          <button type="submit"
+                  {% if not reg_open %}disabled{% endif %}
+                  style="padding:9px 20px;border-radius:6px;border:none;cursor:{% if reg_open %}pointer{% else %}not-allowed{% endif %};
+                         font-size:13px;font-weight:500;
+                         background:{% if reg_open %}#185FA5{% else %}#ccc{% endif %};
+                         color:#fff;display:flex;align-items:center;gap:7px;white-space:nowrap;">
+            <span style="font-size:16px;">📨</span>
+            Initiate Registration
+          </button>
+        </form>
+      </div>
+    </div>
+    <!-- ===== END INITIATE REGISTRATION BANNER ===== -->
+
+    <!-- Coordinator Profile Card -->
+    {% if coord_info %}
+    <div class="card" style="margin-bottom:1.2rem;padding:1rem 1.2rem">
+      <div class="card-title" style="margin-bottom:10px">🎓 My Profile</div>
+      <div style="display:flex;gap:2rem;flex-wrap:wrap">
+        <div>
+          <div style="font-size:11px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.4px">Name</div>
+          <div style="font-weight:500;font-size:14px">{{ coord_info.FullName }}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.4px">Email</div>
+          <div style="font-size:14px">{{ coord_info.Email or '—' }}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.4px">Department</div>
+          <div style="font-size:14px">{{ coord_info.Department or '—' }}</div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Assigned Courses & Semesters -->
+    <div class="card" style="margin-bottom:1.2rem;padding:1rem 1.2rem">
+      <div class="card-title" style="margin-bottom:10px">📋 My Assigned Courses &amp; Semesters</div>
+      {% if assignments %}
+        {% set ns = namespace(prev_course='') %}
+        {% for a in assignments %}
+          {% if a.ShortCode != ns.prev_course %}
+            {% if not loop.first %}</div>{% endif %}
+            <div style="margin-bottom:8px">
+            <span style="font-weight:600;font-size:13px;color:var(--color-text-primary)">
+              <span class="badge badge-{{ a.ShortCode | lower }}">{{ a.ShortCode }}</span>
+              {{ a.CourseName }}
+            </span>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+            {% set ns.prev_course = a.ShortCode %}
+          {% endif %}
+          <span class="badge" style="background:#e8eaf6;color:#3949ab;font-size:12px;padding:4px 10px">
+            Sem {{ a.Semester }}
+          </span>
+          {% if loop.last %}</div></div>{% endif %}
+        {% endfor %}
+      {% else %}
+        <div style="font-size:13px;color:var(--color-text-secondary)">
+          No courses assigned yet. Contact the administrator.
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Stats scoped to assignments -->
+    <div class="metric-grid">
+      <div class="metric">
+        <div class="metric-label">My Students</div>
+        <div class="metric-val">{{ scoped_students }}</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Pending Approvals</div>
+        <div class="metric-val" style="color:#BA7517">{{ pending }}</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Approved</div>
+        <div class="metric-val" style="color:#3B6D11">{{ approved }}</div>
+      </div>
+    </div>
+
+    {% if pending > 0 %}
+    <div class="alert alert-warn">
+      {{ pending }} registration(s) in your courses awaiting review.
+      <a href="{{ url_for('coordinator_verify') }}" style="color:#854F0B;font-weight:500;margin-left:8px">Review now →</a>
+    </div>
+    {% endif %}
+
+    <!-- Recent Activity -->
+    <div class="card">
+      <div class="card-title">Recent Activity (My Courses)</div>
+      {% if recent %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Student</th><th>Course</th><th>Sem</th><th>Status</th><th>Date</th></tr></thead>
+          <tbody>
+            {% for r in recent %}
+            <tr>
+              <td>{{ r.FullName }}</td>
+              <td><span class="badge badge-{{ r.ShortCode | lower }}">{{ r.ShortCode }}</span></td>
+              <td style="text-align:center">{{ r.Semester }}</td>
+              <td><span class="badge badge-{{ r.Status }}">{{ r.Status.capitalize() }}</span></td>
+              <td style="font-size:12px;color:var(--color-text-secondary)">
+                {{ r.SubmittedAt.strftime('%d %b %Y') if r.SubmittedAt else '—' }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div style="color:var(--color-text-secondary);font-size:13px">No activity yet in your assigned courses.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

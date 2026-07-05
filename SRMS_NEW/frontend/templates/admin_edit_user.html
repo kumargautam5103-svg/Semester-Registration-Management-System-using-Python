@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Edit User — {{ user.FullName }}{% endblock %}
+{% block content %}
+<div class="dash-layout">
+  <div class="sidebar">
+    <div class="sidebar-section">Admin</div>
+    <a class="sidebar-item" href="{{ url_for('admin_dashboard') }}"><span class="icon">◉</span> Overview</a>
+    <a class="sidebar-item active" href="{{ url_for('admin_users') }}"><span class="icon">👥</span> Users</a>
+    <a class="sidebar-item" href="{{ url_for('admin_courses') }}"><span class="icon">📚</span> Courses</a>
+    <a class="sidebar-item" href="{{ url_for('admin_subjects') }}"><span class="icon">📋</span> Subjects</a>
+  </div>
+
+  <div class="main-content">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+      <div>
+        <div class="page-title">Edit User</div>
+        <div class="page-sub" style="margin-bottom:0">
+          Editing: <strong>{{ user.FullName }}</strong>
+          <span class="badge {% if user.IsActive %}badge-approved{% else %}badge-rejected{% endif %}" style="margin-left:8px">
+            {{ 'Active' if user.IsActive else 'Inactive' }}
+          </span>
+        </div>
+      </div>
+      <a href="{{ url_for('admin_users') }}" class="btn-secondary" style="text-decoration:none;padding:8px 16px;display:inline-block">← Back to Users</a>
+    </div>
+
+    <div class="card" style="max-width:700px">
+      <div class="card-title">User Details</div>
+
+      <form method="POST" action="{{ url_for('admin_edit_user', user_id=user.UserID) }}">
+
+        <!-- Common fields -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Full Name <span style="color:red">*</span></label>
+            <input class="form-input" name="full_name" value="{{ user.FullName }}" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Username <span style="color:red">*</span></label>
+            <input class="form-input" name="username" value="{{ user.Username }}" required />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input class="form-input" type="email" name="email" value="{{ user.Email or '' }}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">New Password <span style="color:#aaa;font-size:11px">(leave blank to keep current)</span></label>
+            <input class="form-input" type="password" name="password" placeholder="Enter new password to change" />
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:1.2rem">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" name="is_active" value="1" {% if user.IsActive %}checked{% endif %}
+                   style="width:16px;height:16px;cursor:pointer" />
+            <span class="form-label" style="margin:0">Account Active</span>
+          </label>
+          <div style="font-size:11px;color:var(--color-text-secondary);margin-top:4px;margin-left:24px">
+            Unchecking this will prevent the user from logging in.
+          </div>
+        </div>
+
+        <!-- Role: student -->
+        {% if user.Role == 'student' %}
+        <div style="border-top:1px solid var(--color-border);margin:1rem 0;padding-top:1rem">
+          <div style="font-size:12px;font-weight:600;color:var(--color-text-secondary);margin-bottom:1rem;text-transform:uppercase;letter-spacing:.5px">🎒 Student Details</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Roll No</label>
+              <input class="form-input" value="{{ user.RollNo or '—' }}" disabled style="background:var(--color-background-secondary);color:var(--color-text-secondary)" />
+              <div style="font-size:11px;color:#aaa;margin-top:3px">Roll No is auto-generated and cannot be changed.</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Batch</label>
+              <input class="form-input" name="batch" value="{{ user.Batch or '' }}" placeholder="e.g. 2022-2025" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Course</label>
+              <select class="form-select" name="course_id">
+                {% for c in courses %}
+                <option value="{{ c.CourseID }}" {% if c.CourseID == user.CourseID %}selected{% endif %}>
+                  {{ c.ShortCode }} — {{ c.CourseName }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Current Semester</label>
+              <input class="form-input" type="number" name="current_sem" min="1" max="8"
+                     value="{{ user.CurrentSem or 1 }}" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Role: coordinator -->
+        {% elif user.Role == 'coordinator' %}
+        <div style="border-top:1px solid var(--color-border);margin:1rem 0;padding-top:1rem">
+          <div style="font-size:12px;font-weight:600;color:var(--color-text-secondary);margin-bottom:1rem;text-transform:uppercase;letter-spacing:.5px">🎓 Coordinator Details</div>
+          <div class="form-group">
+            <label class="form-label">Department</label>
+            <input class="form-input" name="department" value="{{ user.Department or '' }}" placeholder="e.g. Computer Science" />
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="modal-actions" style="justify-content:flex-start;gap:.75rem;margin-top:1.5rem">
+          <button type="submit" class="btn-primary" style="width:auto;padding:9px 24px">💾 Save Changes</button>
+          <a href="{{ url_for('admin_users') }}" class="btn-secondary" style="text-decoration:none;padding:9px 20px;display:inline-block">Cancel</a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="card" style="max-width:700px;margin-top:1.5rem;border:1px solid #f5c6c6">
+      <div class="card-title" style="color:var(--color-text-danger)">⚠️ Danger Zone</div>
+      <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:1rem">
+        Permanently delete this user and all associated data (registrations, subjects,user profiles). This action <strong>cannot be undone</strong>.
+      </p>
+      <form method="POST" action="{{ url_for('admin_hard_delete_user', user_id=user.UserID) }}"
+            onsubmit="return confirm('WARNING: This will permanently delete {{ user.FullName }} and ALL their data. This cannot be undone.\n\nAre you absolutely sure?')">
+        <button type="submit" class="btn-reject btn-small"
+                style="padding:8px 18px;font-size:13px;background:#dc3545;color:#fff;border:none;border-radius:5px;cursor:pointer">
+          🗑️ Permanently Delete User
+        </button>
+      </form>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+<div class="dash-layout">
+  <div class="sidebar">
+    <div class="sidebar-section">Admin</div>
+    <a class="sidebar-item {% if request.endpoint == 'admin_dashboard' %}active{% endif %}"
+       href="{{ url_for('admin_dashboard') }}"><span class="icon">◉</span> Overview</a>
+    <a class="sidebar-item {% if request.endpoint == 'admin_users' %}active{% endif %}"
+       href="{{ url_for('admin_users') }}"><span class="icon">👥</span> Users</a>
+    <a class="sidebar-item {% if request.endpoint == 'admin_courses' %}active{% endif %}"
+       href="{{ url_for('admin_courses') }}"><span class="icon">📚</span> Courses</a>
+    <a class="sidebar-item {% if request.endpoint == 'admin_subjects' %}active{% endif %}"
+       href="{{ url_for('admin_subjects') }}"><span class="icon">📋</span> Subjects</a>
+  </div>
+
+  <div class="main-content">
+    <div class="page-title">Admin Dashboard</div>
+    <div class="page-sub">System overview and management</div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}" style="margin-bottom:1rem">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- Metric Grid -->
+    <div class="metric-grid">
+      <div class="metric"><div class="metric-label">Total Students</div><div class="metric-val">{{ total_students }}</div></div>
+      <div class="metric"><div class="metric-label">Coordinators</div><div class="metric-val">{{ total_coords }}</div></div>
+      <div class="metric"><div class="metric-label">Pending Registrations</div><div class="metric-val" style="color:#BA7517">{{ pending }}</div></div>
+      <div class="metric"><div class="metric-label">Courses</div><div class="metric-val">{{ total_courses }}</div></div>
+      <div class="metric"><div class="metric-label">Subjects</div><div class="metric-val">{{ total_subjects }}</div></div>
+    </div>
+
+    <!-- REGISTRATION PERIOD MANAGEMENT -->
+    <div class="card" style="margin-bottom:1.2rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:10px">
+        <div class="card-title" style="margin:0">📅 Registration Period Management</div>
+        <button class="btn-primary" style="width:auto;padding:8px 18px;font-size:13px"
+                onclick="document.getElementById('modal-newperiod').classList.add('open')">
+          + New Period
+        </button>
+      </div>
+
+      <!-- Active Period Banner -->
+      {% set ns = namespace(has_active=false) %}
+      {% for p in all_periods %}{% if p.IsOpen %}{% set ns.has_active = true %}{% endif %}{% endfor %}
+
+      {% if ns.has_active %}
+        {% for ap in all_periods %}{% if ap.IsOpen %}
+        <div style="background:#eafbea;border:1px solid #b2dfb2;border-radius:8px;
+                    padding:14px 18px;margin-bottom:1.2rem;display:flex;
+                    align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:#1a7f37;margin-bottom:4px">
+              ✅ Active Period — {{ ap.AcadYear }}
+            </div>
+            <div style="font-size:12px;color:#555;display:flex;gap:16px;flex-wrap:wrap">
+              <span>🗓 Start: <strong>{{ ap.StartDate.strftime('%d %b %Y') if ap.StartDate else 'Not set' }}</strong></span>
+              <span>🏁 End: <strong>{{ ap.EndDate.strftime('%d %b %Y') if ap.EndDate else 'Not set' }}</strong></span>
+              <span style="color:#888">Created: {{ ap.CreatedAt.strftime('%d %b %Y') if ap.CreatedAt else '—' }}</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-small"
+                    style="background:#e8f4fd;color:#1a73e8;border:1px solid #c5d8f0"
+                    onclick="openEditModal({{ ap.PeriodID }}, '{{ ap.AcadYear }}',
+                             '{{ ap.StartDate.strftime('%Y-%m-%d') if ap.StartDate else '' }}',
+                             '{{ ap.EndDate.strftime('%Y-%m-%d') if ap.EndDate else '' }}', true)">
+              ✏️ Edit
+            </button>
+            <form method="POST" action="{{ url_for('admin_toggle_reg_period') }}"
+                  onsubmit="return confirm('Close the active registration period?')">
+              <input type="hidden" name="action" value="close" />
+              <button class="btn-small btn-reject" type="submit">✖ Close Period</button>
+            </form>
+          </div>
+        </div>
+        {% endif %}{% endfor %}
+      {% else %}
+        <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;
+                    padding:14px 18px;margin-bottom:1.2rem;font-size:13px;color:#7c5500">
+          ⚠️ No registration period is currently open. Click <strong>+ New Period</strong> to open one.
+        </div>
+      {% endif %}
+
+      <!-- Period History Table -->
+      <div style="font-size:11px;font-weight:600;color:var(--color-text-secondary);
+                  text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
+        All Periods ({{ all_periods | length }})
+      </div>
+      {% if all_periods %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Academic Year</th>
+              <th>Status</th>
+              <th>Start Date</th>
+              <th>End Date</th>
+              <th>Created</th>
+              <th style="width:120px">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in all_periods %}
+            <tr>
+              <td style="font-weight:500">{{ p.AcadYear }}</td>
+              <td>
+                {% if p.IsOpen %}
+                  <span class="badge badge-approved">Open</span>
+                {% else %}
+                  <span class="badge" style="background:#f0f0f0;color:#777">Closed</span>
+                {% endif %}
+              </td>
+              <td style="font-size:13px">{{ p.StartDate.strftime('%d %b %Y') if p.StartDate else '—' }}</td>
+              <td style="font-size:13px">{{ p.EndDate.strftime('%d %b %Y') if p.EndDate else '—' }}</td>
+              <td style="font-size:12px;color:var(--color-text-secondary)">
+                {{ p.CreatedAt.strftime('%d %b %Y') if p.CreatedAt else '—' }}
+              </td>
+              <td>
+                <div style="display:flex;gap:4px;flex-wrap:wrap">
+                  <button class="btn-small"
+                          style="background:#e8f4fd;color:#1a73e8;border:1px solid #c5d8f0;font-size:11px"
+                          onclick="openEditModal({{ p.PeriodID }}, '{{ p.AcadYear }}',
+                                   '{{ p.StartDate.strftime('%Y-%m-%d') if p.StartDate else '' }}',
+                                   '{{ p.EndDate.strftime('%Y-%m-%d') if p.EndDate else '' }}',
+                                   {{ 'true' if p.IsOpen else 'false' }})">
+                    ✏️ Edit
+                  </button>
+                  {% if not p.IsOpen %}
+                  <form method="POST"
+                        action="{{ url_for('admin_delete_reg_period', period_id=p.PeriodID) }}"
+                        onsubmit="return confirm('Delete period {{ p.AcadYear }}?\n\nNote: This does NOT delete registrations submitted during this period.')">
+                    <button class="btn-small btn-reject" type="submit" style="font-size:11px">🗑 Del</button>
+                  </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div style="font-size:13px;color:var(--color-text-secondary);padding:1rem 0">
+        No registration periods created yet.
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Quick Links -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <a class="card" href="{{ url_for('admin_users') }}" style="text-decoration:none;display:block;cursor:pointer">
+        <div class="card-title">👥 User Management</div>
+        <div style="font-size:13px;color:var(--color-text-secondary)">Add, edit, or deactivate students and coordinators.</div>
+      </a>
+      <a class="card" href="{{ url_for('admin_courses') }}" style="text-decoration:none;display:block;cursor:pointer">
+        <div class="card-title">📚 Course Management</div>
+        <div style="font-size:13px;color:var(--color-text-secondary)">Manage BCA, MCA and other programmes.</div>
+      </a>
+      <a class="card" href="{{ url_for('admin_subjects') }}" style="text-decoration:none;display:block;cursor:pointer">
+        <div class="card-title">📋 Subject Management</div>
+        <div style="font-size:13px;color:var(--color-text-secondary)">Add or remove subjects per course and semester.</div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: NEW PERIOD -->
+<div class="modal-backdrop" id="modal-newperiod">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-title">📅 Open New Registration Period</div>
+    <form method="POST" action="{{ url_for('admin_toggle_reg_period') }}">
+      <input type="hidden" name="action" value="open" />
+      <div class="form-group">
+        <label class="form-label">Academic Year <span style="color:red">*</span></label>
+        <input class="form-input" name="acad_year" placeholder="e.g. 2025-26" required />
+        <div style="font-size:11px;color:#aaa;margin-top:3px">Format: YYYY-YY (e.g. 2025-26)</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Start Date</label>
+          <input class="form-input" type="date" name="start_date" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">End Date</label>
+          <input class="form-input" type="date" name="end_date" />
+        </div>
+      </div>
+      <div style="font-size:12px;color:#7c5500;background:#fff8e1;border-radius:6px;
+                  padding:10px 12px;margin-bottom:1rem">
+        ⚠️ Opening a new period will automatically close any currently open period.
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary"
+                onclick="document.getElementById('modal-newperiod').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn-primary" style="width:auto;padding:8px 20px">✅ Open Period</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: EDIT PERIOD -->
+<div class="modal-backdrop" id="modal-editperiod">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-title">✏️ Edit Registration Period</div>
+    <form method="POST" id="edit-period-form" action="">
+      <div class="form-group">
+        <label class="form-label">Academic Year <span style="color:red">*</span></label>
+        <input class="form-input" name="acad_year" id="edit-acad-year" placeholder="e.g. 2025-26" required />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Start Date</label>
+          <input class="form-input" type="date" name="start_date" id="edit-start-date" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">End Date</label>
+          <input class="form-input" type="date" name="end_date" id="edit-end-date" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" name="is_open" id="edit-is-open" value="1"
+                 style="width:15px;height:15px;cursor:pointer" />
+          <span class="form-label" style="margin:0">Mark as Active (Open)</span>
+        </label>
+        <div style="font-size:11px;color:#aaa;margin-top:3px;margin-left:23px">
+          Enabling this will close all other periods.
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary"
+                onclick="document.getElementById('modal-editperiod').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn-primary" style="width:auto;padding:8px 20px">💾 Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+['modal-newperiod','modal-editperiod'].forEach(id => {
+  document.getElementById(id).addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+  });
+});
+
+function openEditModal(periodId, acadYear, startDate, endDate, isOpen) {
+  document.getElementById('edit-acad-year').value  = acadYear;
+  document.getElementById('edit-start-date').value = startDate || '';
+  document.getElementById('edit-end-date').value   = endDate   || '';
+  document.getElementById('edit-is-open').checked  = isOpen;
+  document.getElementById('edit-period-form').action =
+    '/admin/registration-period/edit/' + periodId;
+  document.getElementById('modal-editperiod').classList.add('open');
+}
+</script>
+{% endblock %}
