@@ -1,7 +1,3 @@
--- ============================================================
--- SRMS - Semester Registration Management System
--- SQL Server Setup Script  [v8 — Fee Receipt stored in Database]
--- ============================================================
 
 USE master;
 GO
@@ -15,9 +11,7 @@ GO
 USE SRMS_DB3;
 GO
 
--- ============================================================
--- DROP TABLES (dependency order)
--- ============================================================
+
 IF OBJECT_ID('dbo.PasswordResetTokens',   'U') IS NOT NULL DROP TABLE dbo.PasswordResetTokens;
 IF OBJECT_ID('dbo.CoordinatorAssignments','U') IS NOT NULL DROP TABLE dbo.CoordinatorAssignments;
 IF OBJECT_ID('dbo.RegistrationSubjects',  'U') IS NOT NULL DROP TABLE dbo.RegistrationSubjects;
@@ -42,9 +36,7 @@ CREATE TABLE dbo.Courses (
 );
 GO
 
--- ============================================================
--- USERS
--- ============================================================
+
 CREATE TABLE dbo.Users (
     UserID       INT IDENTITY(1,1) PRIMARY KEY,
     Username     NVARCHAR(50)  NOT NULL UNIQUE,
@@ -57,9 +49,7 @@ CREATE TABLE dbo.Users (
 );
 GO
 
--- ============================================================
--- STUDENTS
--- ============================================================
+
 CREATE TABLE dbo.Students (
     StudentID  INT IDENTITY(1,1) PRIMARY KEY,
     UserID     INT NOT NULL REFERENCES dbo.Users(UserID),
@@ -122,13 +112,7 @@ CREATE TABLE dbo.RegistrationPeriods (
 );
 GO
 
--- ============================================================
--- REGISTRATIONS
--- v8 CHANGE: Fee receipt is now stored as binary in the database.
---   FeeReceiptPath    - kept for display name / original filename reference
---   FeeReceiptData    - actual file bytes (VARBINARY(MAX))
---   FeeReceiptMime    - MIME type so we can serve the file correctly
--- ============================================================
+
 CREATE TABLE dbo.Registrations (
     RegID             INT IDENTITY(1,1) PRIMARY KEY,
     StudentID         INT NOT NULL REFERENCES dbo.Students(StudentID),
@@ -146,9 +130,7 @@ CREATE TABLE dbo.Registrations (
 );
 GO
 
--- ============================================================
--- REGISTRATION SUBJECTS
--- ============================================================
+
 CREATE TABLE dbo.RegistrationSubjects (
     ID        INT IDENTITY(1,1) PRIMARY KEY,
     RegID     INT NOT NULL REFERENCES dbo.Registrations(RegID),
@@ -263,11 +245,3 @@ GO
 PRINT 'SRMS_DB3 setup complete — v8: Fee receipt stored in database (FeeReceiptData column).';
 GO
 
--- ============================================================
--- v8 MIGRATION SCRIPT (for existing databases — run separately)
--- If upgrading from v7, run only the ALTER TABLE statements below:
--- ============================================================
--- ALTER TABLE dbo.Registrations ADD FeeReceiptData VARBINARY(MAX) NULL;
--- ALTER TABLE dbo.Registrations ADD FeeReceiptMime NVARCHAR(100) NULL;
--- PRINT 'v8 migration: FeeReceiptData and FeeReceiptMime columns added.';
--- GO
