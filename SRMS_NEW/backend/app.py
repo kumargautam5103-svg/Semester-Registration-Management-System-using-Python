@@ -1,15 +1,4 @@
-"""
-SRMS - Semester Registration Management System
-Flask + SQL Server (pyodbc) backend  [v8 - Fee Receipt stored in Database]
 
-Key change from v7:
-  - Fee receipts are uploaded as binary data directly into the Registrations table
-    (FeeReceiptData VARBINARY(MAX), FeeReceiptMime NVARCHAR(100)).
-  - FeeReceiptPath stores only the original display filename (no local file write).
-  - No uploads/ folder is used or needed.
-  - Coordinators fetch and view fee receipts via /coordinator/receipt/<reg_id>
-    which streams binary data directly from the database.
-"""
 
 from flask import (Flask, render_template, request, redirect,
                    url_for, session, jsonify, flash, send_file, abort, Response)
@@ -25,11 +14,6 @@ app = Flask(__name__,
             static_folder='../frontend/static')
 app.secret_key = 'srms_secret_key_change_in_production'
 
-# ============================================================
-# FILE UPLOAD CONFIGURATION
-# No local filesystem storage — receipts go to the database.
-# Only allowed extensions are validated before inserting.
-# ============================================================
 ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png'}
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5 MB
 
